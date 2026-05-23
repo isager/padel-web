@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local Padel Mexicano</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 15px; background: #f0f2f5; color: #333; }
+        .card { background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        input, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; font-size: 16px; }
+        button { background: #007bff; color: white; border: none; font-weight: bold; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        ul { list-style: none; padding: 0; }
+        li { background: #eee; margin: 5px 0; padding: 10px; border-radius: 4px; display: flex; justify-content: space-between; }
+    </style>
+</head>
+<body>
+
+    <h2>🎾 Padel Mexicano Manager</h2>
+
+    <div class="card">
+        <h3>Add Players (Min 4)</h3>
+        <input type="text" id="playerName" placeholder="Player Name">
+        <button onclick="addPlayer()">Add Player</button>
+        <ul id="playerList"></ul>
+        <button style="background: #28a745;" onclick="generateNextRound()">Generate Matches</button>
+    </div>
+
+    <div class="card">
+        <h3>Current Round Matches</h3>
+        <div id="matchesContainer">No matches generated yet.</div>
+    </div>
+
+    <div class="card">
+        <h3>Leaderboard</h3>
+        <ul id="leaderboard"></ul>
+    </div>
+
+    <script>
+        let players = []; // Array of objects: { name: "", points: 0 }
+
+        function addPlayer() {
+            const nameInput = document.getElementById('playerName');
+            const name = nameInput.value.trim();
+            if (name) {
+                players.push({ name: name, points: 0 });
+                nameInput.value = '';
+                updateUI();
+            }
+        }
+
+        function updateUI() {
+            // Update Player List
+            const list = document.getElementById('playerList');
+            list.innerHTML = players.map(p => `<li>${p.name} <span>${p.points} pts</span></li>`).join('');
+            
+            // Update Leaderboard
+            const leaderboard = document.getElementById('leaderboard');
+            const sorted = [...players].sort((a, b) => b.points - a.points);
+            leaderboard.innerHTML = sorted.map((p, index) => `<li>#${index + 1} ${p.name} <span>${p.points} pts</span></li>`).join('');
+        }
+
+        function generateNextRound() {
+            if (players.length < 4) {
+                alert("You need at least 4 players!");
+                return;
+            }
+            
+            // Sort players by points for Mexicano formatting
+            players.sort((a, b) => b.points - a.points);
+            
+            let container = document.getElementById('matchesContainer');
+            container.innerHTML = '';
+
+            // Generate courts based on ranking (1,4 vs 2,3 structure for balance)
+            for (let i = 0; i < Math.floor(players.length / 4); i++) {
+                let idx = i * 4;
+                let p1 = players[idx], p2 = players[idx+3], p3 = players[idx+1], p4 = players[idx+2];
+                
+                if(!p1 || !p2 || !p3 || !p4) break;
+
+                container.innerHTML += `
+                    <div style="border-bottom: 1px solid #ddd; padding: 10px 0;">
+                        <h4>Court ${i+1}</h4>
+                        <p>${p1.name} & ${p2.name} <strong>VS</strong> ${p3.name} & ${p4.name}</p>
+                        <input type="number" id="scoreA_${i}" placeholder="Team 1 Score" style="width: 45%; display:inline;">
+                        <input type="number" id="scoreB_${i}" placeholder="Team 2 Score" style="width: 45%; display:inline;">
+                        <button onclick="submitScore(${idx}, ${idx+3}, ${idx+1}, ${idx+2}, ${i})">Submit Score</button>
+                    </div>
+                `;
+            }
+        }
+
+        function submitScore(p1Idx, p2Idx, p3Idx, p4Idx, courtNum) {
+            const scoreA = parseInt(document.getElementById(`scoreA_${courtNum}`).value) || 0;
+            const scoreB = parseInt(document.getElementById(`scoreB_${courtNum}`).value) || 0;
+
+            // In Mexicano, players usually get the points they scored in the match
+            players[p1Idx].points += scoreA;
+            players[p2Idx].points += scoreA;
+            players[p3Idx].points += scoreB;
+            players[p4Idx].points += scoreB;
+
+            alert("Scores updated!");
+            updateUI();
+        }
+    </script>
+</body>
+</html>
