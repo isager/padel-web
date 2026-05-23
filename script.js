@@ -38,17 +38,17 @@ const PadelMexicano = {
         localStorage.setItem('padel_players', JSON.stringify(this.players));
     },
 
-    addPlayer() {
-        const nameInput = document.getElementById('playerName');
-        const name = nameInput.value.trim();
-        if (name) {
-            this.players.push({ name: name, points: 0 });
-            nameInput.value = '';
-            this.saveData();
-            this.updateUI();
-        }
-    },
-
+addPlayer() {
+    const nameInput = document.getElementById('playerName');
+    const name = nameInput.value.trim();
+    if (name) {
+        // Added 'byes: 0' to track sitting out
+        this.players.push({ name: name, points: 0, byes: 0 });
+        nameInput.value = '';
+        this.saveData();
+        this.updateUI();
+    }
+},
     updateUI() {
         const list = document.getElementById('playerList');
         list.innerHTML = this.players.map(p => `<li>${p.name} <span>${p.points} pts</span></li>`).join('');
@@ -58,46 +58,76 @@ const PadelMexicano = {
         leaderboard.innerHTML = sorted.map((p, index) => `<li>#${index + 1} ${p.name} <span>${p.points} pts</span></li>`).join('');
     },
 
-    generateNextRound() {
-        if (this.players.length < 4) {
-            alert("You need at least 4 players!");
-            return;
-        }
+generateNextRound() {
+    if (this.players.length < 4) {
+        alert("You need at least 4 players!");
+        return;
+    }
+    
+    let container = document.getElementById('matchesContainer');
+    container.innerHTML = '';
+
+    // Create a copy of the players array to manipulate for this round
+    let roundPlayers = [...this.players];
+
+    // Check if we have an odd number of players (e.g., 5, 7, 9)
+    if (roundPlayers.length % 4 !== 0) {
+        // Sort by number of byes first (whoever sat out the least), then by lowest points.
+        // This ensures the person with the fewest rests sits out next.
+        roundPlayers.sort((a, b) => a.byes - b.byes || a.points - b.points);
         
-        this.players.sort((a, b) => b.points - a.points);
+        // The first player in this sorted list sits out
+        const restingPlayer = roundPlayers.shift(); 
         
-        let container = document.getElementById('matchesContainer');
-        container.innerHTML = '';
+        // Increment their bye count in our main tracking state
+        const mainPlayerIndex = this.players.findIndex(p => p.name === restingPlayer.name);
+        this.players[mainPlayerIndex].byes += 1;
+        this.saveData();
 
-        const totalCourts = Math.floor(this.players.length / 4);
+        // Display who is resting
+        container.innerHTML += `
+            <div class="card" style="background: #fff3cd; border: 1px solid #ffeeba; color: #856404;">
+                <strong>☕ Resting this round (Bye):</strong> ${restingPlayer.name}
+            </div>
+        `;
+    }
 
-        for (let i = 0; i < totalCourts; i++) {
-            let idx = i * 4;
-            let p1 = this.players[idx], 
-                p2 = this.players[idx+3], 
-                p3 = this.players[idx+1], 
-                p4 = this.players[idx+2];
-            
-            if(!p1 || !p2 || !p3 || !p4) break;
+    // Now, sort the REMAINING players strictly by performance points for Mexicano matching
+    roundPlayers.sort((a, b) => b.points - a.points);
+    
+    const totalCourts = Math.floor(roundPlayers.length / 4);
 
-            // Notice data attributes (data-p1, data-court, etc.) hold configuration context
-            container.innerHTML += `
-                <div class="court-container">
-                    <h4>Court ${i+1}</h4>
-                    <p>${p1.name} & ${p2.name} <strong>VS</strong> ${p3.name} & ${p4.name}</p>
-                    <input type="number" id="scoreA_${i}" class="score-input" placeholder="Team 1 Score">
-                    <input type="number" id="scoreB_${i}" class="score-input" placeholder="Team 2 Score">
-                    <button class="btn-submit-score" 
-                            data-court="${i}" 
-                            data-p1="${idx}" data-p2="${idx+3}" 
-                            data-p3="${idx+1}" data-p4="${idx+2}">
-                        Submit Score
-                    </button>
-                </div>
-            `;
-        }
-    },
+    for (let i = 0; i < totalCourts; i++) {
+        let idx = i * 4;
+        let p1 = roundPlayers[idx], 
+            p2 = roundPlayers[idx+3], 
+            p3 = roundPlayers[idx+1], 
+            p4 = roundPlayers[idx+2];
+        
+        if(!p1 || !p2 || !p3 || !p4) break;
 
+        // Find their true indices in the master global array to score them correctly later
+        let m1 = this.players.findIndex(p => p.name === p1.name);
+        let m2 = this.players.findIndex(p => p.name === p2.name);
+        let m3 = this.players.findIndex(p => p.name === p3.name);
+        let m4 = this.players.findIndex(p => p.name === p4.name);
+
+        container.innerHTML += `
+            <div class="court-container">
+                <h4>Court ${i+1}</h4>
+                <p>${p1.name} & ${p2.name} <strong>VS</strong> ${p3.name} & ${p4.name}</p>
+                <input type="number" id="scoreA_${i}" class="score-input" placeholder="Team 1 Score">
+                <input type="number" id="scoreB_${i}" class="score-input" placeholder="Team 2 Score">
+                <button class="btn-submit-score" 
+                        data-court="${i}" 
+                        data-p1="${m1}" data-p2="${m2}" 
+                        data-p3="${m3}" data-p4="${m4}">
+                    Submit Score
+                </button>
+            </div>
+        `;
+    }
+}
     // Processes clicks caught by Event Delegation on the container
     handleScoreSubmission(buttonElement) {
         // Extract player indices and court ID from data-attributes
