@@ -2,18 +2,42 @@ const PadelMexicano = {
     // Application State
     players: [],
 
-    // Initialize the application
+    // Initialize the application and attach event handlers
     init() {
+        // Load existing data from storage
         this.players = JSON.parse(localStorage.getItem('padel_players')) || [];
         this.updateUI();
+
+        // 1. Static Event Handlers
+        document.getElementById('btnAddPlayer')
+            .addEventListener('click', () => this.addPlayer());
+
+        document.getElementById('btnGenerateRound')
+            .addEventListener('click', () => this.generateNextRound());
+
+        document.getElementById('btnResetTournament')
+            .addEventListener('click', () => this.clearTournament());
+
+        // Allow pressing "Enter" key in the player input box
+        document.getElementById('playerName')
+            .addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') this.addPlayer();
+            });
+
+        // 2. Dynamic Event Delegation for Court Submission Buttons
+        // Because court HTML is generated on the fly, we monitor the stable parent element.
+        document.getElementById('matchesContainer')
+            .addEventListener('click', (event) => {
+                if (event.target && event.target.classList.contains('btn-submit-score')) {
+                    this.handleScoreSubmission(event.target);
+                }
+            });
     },
 
-    // Save state to browser storage
     saveData() {
         localStorage.setItem('padel_players', JSON.stringify(this.players));
     },
 
-    // Add a new player to the roster
     addPlayer() {
         const nameInput = document.getElementById('playerName');
         const name = nameInput.value.trim();
@@ -25,26 +49,21 @@ const PadelMexicano = {
         }
     },
 
-    // Handle updating all presentation segments
     updateUI() {
-        // Update Roster List
         const list = document.getElementById('playerList');
         list.innerHTML = this.players.map(p => `<li>${p.name} <span>${p.points} pts</span></li>`).join('');
         
-        // Update Leaderboard Rank
         const leaderboard = document.getElementById('leaderboard');
         const sorted = [...this.players].sort((a, b) => b.points - a.points);
         leaderboard.innerHTML = sorted.map((p, index) => `<li>#${index + 1} ${p.name} <span>${p.points} pts</span></li>`).join('');
     },
 
-    // Calculate pairings and construct multi-court layouts
     generateNextRound() {
         if (this.players.length < 4) {
             alert("You need at least 4 players!");
             return;
         }
         
-        // Mexicano Pairing: Sort players by points standing
         this.players.sort((a, b) => b.points - a.points);
         
         let container = document.getElementById('matchesContainer');
@@ -61,25 +80,40 @@ const PadelMexicano = {
             
             if(!p1 || !p2 || !p3 || !p4) break;
 
+            // Notice data attributes (data-p1, data-court, etc.) hold configuration context
             container.innerHTML += `
                 <div class="court-container">
                     <h4>Court ${i+1}</h4>
                     <p>${p1.name} & ${p2.name} <strong>VS</strong> ${p3.name} & ${p4.name}</p>
                     <input type="number" id="scoreA_${i}" class="score-input" placeholder="Team 1 Score">
                     <input type="number" id="scoreB_${i}" class="score-input" placeholder="Team 2 Score">
-                    <button onclick="PadelMexicano.submitScore(${idx}, ${idx+3}, ${idx+1}, ${idx+2}, ${i})">Submit Score</button>
+                    <button class="btn-submit-score" 
+                            data-court="${i}" 
+                            data-p1="${idx}" data-p2="${idx+3}" 
+                            data-p3="${idx+1}" data-p4="${idx+2}">
+                        Submit Score
+                    </button>
                 </div>
             `;
         }
     },
 
-    // Submit individual court totals and commit to memory
-    submitScore(p1Idx, p2Idx, p3Idx, p4Idx, courtNum) {
-        const scoreA = parseInt(document.getElementById(`scoreA_${courtNum}`).value);
-        const scoreB = parseInt(document.getElementById(`scoreB_${courtNum}`).value);
+    // Processes clicks caught by Event Delegation on the container
+    handleScoreSubmission(buttonElement) {
+        // Extract player indices and court ID from data-attributes
+        const courtNum = buttonElement.getAttribute('data-court');
+        const p1Idx = parseInt(buttonElement.getAttribute('data-p1'));
+        const p2Idx = parseInt(buttonElement.getAttribute('data-p2'));
+        const p3Idx = parseInt(buttonElement.getAttribute('data-p3'));
+        const p4Idx = parseInt(buttonElement.getAttribute('data-p4'));
+
+        const scoreAInput = document.getElementById(`scoreA_${courtNum}`);
+        const scoreBInput = document.getElementById(`scoreB_${courtNum}`);
+        const scoreA = parseInt(scoreAInput.value);
+        const scoreB = parseInt(scoreBInput.value);
 
         if (isNaN(scoreA) || isNaN(scoreB)) {
-            alert(`Please enter scores for Court ${courtNum + 1} first!`);
+            alert(`Please enter scores for Court ${parseInt(courtNum) + 1} first!`);
             return;
         }
 
@@ -92,16 +126,13 @@ const PadelMexicano = {
         this.saveData();
         this.updateUI();
         
-        // Locking inputs to indicate match completion on court
-        document.getElementById(`scoreA_${courtNum}`).disabled = true;
-        document.getElementById(`scoreB_${courtNum}`).disabled = true;
-        
-        const btn = document.getElementById(`scoreA_${courtNum}`).parentElement.querySelector('button');
-        btn.disabled = true;
-        btn.innerText = "Saved ✓";
+        // Disable UI controls for this court
+        scoreAInput.disabled = true;
+        scoreBInput.disabled = true;
+        buttonElement.disabled = true;
+        buttonElement.innerText = "Saved ✓";
     },
 
-    // Wipe storage bucket and memory configuration
     clearTournament() {
         if (confirm("Are you sure you want to clear all players and scores? This cannot be undone.")) {
             this.players = [];
