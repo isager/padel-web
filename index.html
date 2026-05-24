@@ -8,34 +8,37 @@
 </head>
 <body>
 
-    <h2>🎾 Padel Mexicano Manager</h2>
+<div class="container">
+    <header class="app-header">
+        <h1>🎾 Padel Mexicano Manager</h1>
+        <p class="subtitle">Dynamic pairings based on live standings</p>
+    </header>
 
-    <!-- Player Entry -->
     <div class="card">
-        <h3>Add Players (Min 4)</h3>
-        <input type="text" id="playerName" placeholder="Player Name">
-        <button id="btnAddPlayer">Add Player</button>
+        <h2>Add Players <span class="hint">(min 4)</span></h2>
+        <div class="input-row">
+            <input type="text" id="playerName" placeholder="Player name">
+            <button id="btnAddPlayer">Add Player</button>
+        </div>
         <ul id="playerList"></ul>
-        <button id="btnGenerateRound" style="background: #28a745;">Generate Matches</button>
+        <button id="btnGenerateRound" class="btn-success">Generate Next Round</button>
     </div>
 
-    <!-- Match Generation -->
     <div class="card">
-        <h3>Current Round Matches</h3>
-        <div id="matchesContainer">No matches generated yet.</div>
+        <h2 id="roundLabel">No round yet</h2>
+        <div id="matchesContainer" class="matches-container">No matches generated yet.</div>
     </div>
 
-    <!-- Standings -->
     <div class="card">
-        <h3>Leaderboard</h3>
+        <h2>Leaderboard</h2>
         <ul id="leaderboard"></ul>
     </div>
 
-    <!-- Reset Data -->
-    <div class="card">
+    <div class="card card-danger">
         <button id="btnResetTournament" class="btn-danger">Reset Entire Tournament</button>
     </div>
+</div>
 
-    <script src="script.js"></script>
+<script src="script.js"></script>
 </body>
 </html>
